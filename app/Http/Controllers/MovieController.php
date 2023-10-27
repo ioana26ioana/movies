@@ -3,8 +3,13 @@
 namespace App\Http\Controllers;
 
 use Recombee\RecommApi\Client;
+use Recombee\RecommApi\Requests\AddDetailView;
 use Recombee\RecommApi\Requests\AddItem;
 use Recombee\RecommApi\Requests\AddItemProperty;
+use Recombee\RecommApi\Requests\AddUser;
+use Recombee\RecommApi\Requests\GetItemValues;
+use Recombee\RecommApi\Requests\ListItems;
+use Recombee\RecommApi\Requests\RecommendItemsToUser;
 use Recombee\RecommApi\Requests\SetItemValues;
 
 class MovieController extends Controller
@@ -28,7 +33,7 @@ class MovieController extends Controller
         $count = 0;
         for ($i = 1; $i < count($csvData); $i++) {
             if ($csvData[$i][2] != 'PG') {
-                if ($csvData[$i][2] > 1970) {
+                if ($csvData[$i][2] >= 2000) {
                     $count++;
                     $client->send(new AddItem($count));
                     if (!isset($csvData[$i][8]) || $csvData[$i][8] == '' || $csvData[$i][8] == null || !$csvData[$i][8]) {
@@ -48,5 +53,31 @@ class MovieController extends Controller
                 }
             }
         }
+    }
+
+    public function addUsersAndViews (){
+        $client = new Client("proiect-lab1-sac-movies", 'i0fLTiLTzHv3vuRmjcobZ4w0B9ZqFoM8Ns8Tt3mtij5wlVV5cwl0HIZzmg8zMo2o', ["region" => "eu-west"]);
+        $items_count = count($client->send(new ListItems()));
+
+        for($i = 2; $i <= 100; $i++){
+            $random = rand(1, 5);
+            $client->send(new AddUser($i));
+            for($j = 1; $j <= $random; $j++){
+                $item_id = rand(1, $items_count);
+                $client->send(new AddDetailView($i, $item_id));
+            }
+        }
+    }
+
+    public function recommendedMovies() {
+        $client = new Client("proiect-lab1-sac-movies", 'i0fLTiLTzHv3vuRmjcobZ4w0B9ZqFoM8Ns8Tt3mtij5wlVV5cwl0HIZzmg8zMo2o', ["region" => "eu-west"]);
+        $user_id = rand(1, 100);
+        $result = $client->send(new RecommendItemsToUser($user_id, 3));
+        $final_result = '';
+        foreach ($result['recomms'] as $movie_id){
+            $movie = $client->send(new GetItemValues($movie_id['id']));
+            $final_result = $final_result . $movie['title'] . ', ';
+        }
+        return 'Pentru utilizatorul ' . $user_id . ', sunt recomandate filmele: ' . $final_result;
     }
 }
